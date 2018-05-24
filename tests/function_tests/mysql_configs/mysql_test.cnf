@@ -1,0 +1,36 @@
+[server]
+
+#datadir needs to be set on command line
+server_id=1
+log_bin=mysql_bin
+binlog_format=ROW
+bind_address=127.0.0.1
+port=33060                                                          #changed port to avoid conflicts
+
+# this is only for the mysqld standalone daemon
+[mysqld]
+innodb_fast_shutdown=2
+
+#
+# * Galera-related settings
+#
+#[galera]    #percona does not read this section
+# Mandatory settings
+#wsrep_on=ON    #this will be set on command line
+wsrep_provider=/usr/lib64/galera/libgalera_smm.so
+wsrep_provider_options="gmcast.listen_addr=tcp://127.0.0.1:45670"   #changed port to avoid conflicts
+wsrep_cluster_address=gcomm://127.0.0.1:45670                       #changed port to avoid conflicts
+wsrep_cluster_name=my_wsrep_cluster
+wsrep_sst_receive_address=127.0.0.1:44440                           #changed port to avoid conflicts
+wsrep_sst_method=xtrabackup-v2
+binlog_format=row
+default_storage_engine=InnoDB
+innodb_autoinc_lock_mode=2
+
+bind-address=127.0.0.1
+wsrep_node_address=127.0.0.1
+wsrep_node_name=db01
+#
+# Optional setting
+wsrep_slave_threads=4
+innodb_flush_log_at_trx_commit=2

@@ -1,0 +1,36 @@
+//This jenkins file was created for a single node installation, so aware of hacks here and there
+
+pipeline {
+    agent {
+        label 'docker_builder'
+    }
+    stages {
+        stage('Build main docker for tests') {
+            steps {
+                    sh '''
+                        cd docker_for_tests/main
+                        DOCKER_VERSION=`cat Dockerfile | grep '#VERSION' | awk '{print $2}'`
+                        DOCKER_NAME=`echo "$DOCKER_VERSION" | cut -f1 -d ':'`
+                        DOCKER_TAG=`echo "$DOCKER_VERSION" | cut -f2 -d ':'`
+                        docker build --tag $DOCKER_NAME:$DOCKER_TAG .
+                        docker tag $DOCKER_NAME:$DOCKER_TAG $DOCKER_NAME:latest
+                    '''
+            }
+        }
+        stage('Build other dockers for tests') {
+            steps {
+                    sh '''
+                        cd docker_for_tests
+                        for docker_image in `ls -I main -I Jenkinsfile`;
+                        do
+                            DOCKER_VERSION=`cat "${docker_image}/Dockerfile" | grep '#VERSION' | awk '{print $2}'`
+                            DOCKER_NAME=`echo "$DOCKER_VERSION" | cut -f1 -d ':'`
+                            DOCKER_TAG=`echo "$DOCKER_VERSION" | cut -f2 -d ':'`
+                            docker build --tag $DOCKER_NAME:$DOCKER_TAG $docker_image
+                            docker tag $DOCKER_NAME:$DOCKER_TAG $DOCKER_NAME:latest
+                        done
+                    '''
+            }
+        }
+    }
+}

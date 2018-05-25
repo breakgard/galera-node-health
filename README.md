@@ -26,7 +26,7 @@ To launch the check with a custom config you can use `galera-health-node -f <pat
 You can use `galera-health-node --print-example-config` to see an example config.<br />
 Use `galera-health-node --help` to see all startup options.
 
-## Recommended usage:
+### Recommended basic config:
 
 To start the check using socket auth, which does not require saving passwords in the config:
 
@@ -45,6 +45,22 @@ To start the check using socket auth, which does not require saving passwords in
 auth_method=socket
 socket=<path_to_db_socket>
 user=galera-node-health
+```
+
+### HAproxy config example
+
+The health check will work with the following HAproxy backend check configuration.
+```
+backend galera-example
+    balance     roundrobin
+    mode tcp
+    option httpchk GET /health HTTP/1.0
+    http-check disable-on-404
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2
+    server galera1 <IP>:<PORT> check port <health_check_port>
+    server galera2 <IP>:<PORT> check port <health_check_port>
+    server galera3 <IP>:<PORT> check port <health_check_port>
 ```
 
 ### Docker image:

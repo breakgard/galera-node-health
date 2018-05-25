@@ -78,6 +78,22 @@ The docker container accepts the following environment variables (except `DISABL
    If you wish to mount it from the host, make sure the galera-node-health user can write to it.
 *  `-e PROXY_DISABLE_MAINT=yes` - This disables the maintenance links in the proxy.
    If not disabled in health check config, the links still work when accessed directly on the health check port.
+
+# HAproxy config example
+
+The health check will work with the following HAproxy backend check configuration:
+```
+backend galera-example
+    balance     roundrobin
+    mode tcp
+    option httpchk GET /health HTTP/1.0
+    http-check disable-on-404
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2
+    server galera1 <IP>:<PORT> check port 8888
+    server galera2 <IP>:<PORT> check port 8888
+    server galera3 <IP>:<PORT> check port 8888
+```
  
 # Create your own image!
 

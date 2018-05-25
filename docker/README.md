@@ -26,16 +26,21 @@ It can be set as a http health check in HAProxy.
 It is assumed that the Galera node is running on the host.
 
 To start docker using socket auth (recommended - no need to save password in the config):
-1. Create OS user for login. <br />`useradd galera-node-health -s /bin/false`  
-2. Activate socket authentication plugin in database.
-   1. For MariaDB: <br />`MariaDB [(none)]> INSTALL SONAME "auth_socket.so";`
-   2. For MySQL and Percona: <br />`mysql> INSTALL PLUGIN auth_socket SONAME "auth_socket.so";`
-3. Create user in database.
-   1. For MariaDB: <br />`CREATE USER 'galera-node-health'@'localhost' IDENTIFIED VIA 'unix_socket';`
-   2. For MySQL and Percona: <br />`CREATE USER 'galera-node-health'@'localhost' IDENTIFIED WITH 'auth_socket';`
-4. Run a detached docker image with mounted db socket to `/health_check/sockets/db.sock`,<br />
-   uid of created user and exposed proxy port<br />
-`docker run -d -v <path_to_db_socket>:/health_check/sockets/db.sock -p <port_on_host>:8888 -u $(id -u galera-node-health) galera-node-health`
+1. Configure the database to create socket in a separate folder with **db.sock** as the filename. Example config option in my.cnf: `socket=/var/run/mysql-sockets/db.sock`
+2. Create OS user for login. `useradd galera-node-health -s /bin/false`  
+3. Activate socket authentication plugin by connecting to the database and running:
+   1. For MariaDB: `MariaDB [(none)]> INSTALL SONAME "auth_socket.so";`
+   2. For MySQL and Percona: `mysql> INSTALL PLUGIN auth_socket SONAME "auth_socket.so";`
+4. Create user in database.
+   1. For MariaDB: `CREATE USER 'galera-node-health'@'localhost' IDENTIFIED VIA 'unix_socket';`
+   2. For MySQL and Percona: `CREATE USER 'galera-node-health'@'localhost' IDENTIFIED WITH 'auth_socket';`
+5. Run a detached docker image with mounted db socket to `/health_check/sockets/db.sock`,
+   uid of created user and exposed proxy port
+`docker run -d -v /var/run/mysql-sockets:/health_check/sockets -p <port_on_host>:8888 -u $(id -u galera-node-health) breakgard/galera-node-health`
+
+You can also try `docker run -d -v <path_to_mysql_socket>:/health_check/sockets/db.sock -p <port_on_host>:8888 -u $(id -u galera-node-health) breakgard/galera-node-health`, but beware.
+
+The mounting of the whole folder (instead of just the socket file) is required, because mysql deletes the socket file when it closes. The socket does not get relinked inside the docker container on mysql restart. You will need to restart the health check, so that the socket file gets mounted again. If you cannot change the database socket location/name and you do not want to restart the healthcheck each time the database goes down, see example config below and use password authentication.
 
 If the Galera node runs inside a docker container, 
 you will need to share the database socket to the health check,
@@ -52,7 +57,7 @@ You can use a custom health check config by mounting it inside:
 `-v <path_to_conf>:/health_check/conf/galera-node-health.cfg`
 
 You can get an example config with descriptions of all options by running:
-`docker run galera-node-health galera-node-health --print-example-config`
+`docker run breakgard/galera-node-health galera-node-health --print-example-config`
 
 If you'd like, you can also use a custom lighttpd config for the proxy with:
 `-v <path_to_proxy_conf>:/health_check/proxy_conf/lighttpd.conf`
@@ -78,7 +83,7 @@ The docker container accepts the following environment variables (except `DISABL
 
 Example Dockerfile:
 ```
-FROM galera-node-health:<version>
+FROM breakgard/galera-node-health:<version>
 COPY <your_health_check_config> /health_check/conf/galera-node-health.cfg
 COPY <your_lighttpd_proxy_config> /health_check/proxy_conf/lighttpd.conf
 EXPOSE <proxy_port>
@@ -93,7 +98,7 @@ EXPOSE <proxy_port>
 
 # Links:
 
-GitHub: `https://github.com/breakgard/galera-node-health/`
+GitHub: https://github.com/breakgard/galera-node-health/
 
 ## Changelog:
 
@@ -103,4 +108,3 @@ GitHub: `https://github.com/breakgard/galera-node-health/`
   - MySQL: 5.7
   - Percona XtraDB: 5.7
   - MariaDB: 10.2
-
